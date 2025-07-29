@@ -128,6 +128,7 @@ gcloud iam workload-identity-pools providers create-oidc $WORKLOAD_PROVIDER_NAME
     --project=$GCP_PROJECT_ID \
     --workload-identity-pool=$WORKLOAD_POOL_NAME \
     --issuer-uri=$EKS_OIDC_URL \
+    --allowed-audiences='sts.amazonaws.com' \
     --attribute-mapping="google.subject=assertion.sub, attribute.namespace=assertion['kubernetes.io']['namespace'], attribute.service_account_name=assertion['kubernetes.io']['serviceaccount']['name'], attribute.pod=assertion['kubernetes.io']['pod']['name']"
 
 #Update client-config.json with Workload Identity Parameters
@@ -140,7 +141,7 @@ sed -i \
 #Add IAM Permissions for One Service Account
 gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
     --member="principal://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$WORKLOAD_POOL_NAME/subject/system:serviceaccount:$NAMESPACE:gcp-wif-service-account-1" \
-    --role="roles/storage.objectCreator"
+    --role="roles/storage.objectUser"
 ```
 
 
@@ -176,9 +177,6 @@ spec:
     - name: workload-identity-credential-configuration
       mountPath: "/etc/workload-identity"
       readOnly: true
-    - name: token
-      mountPath: "/var/run/service-account"
-      readOnly: true
     env:
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: "/etc/workload-identity/client-config.json"
@@ -193,13 +191,6 @@ spec:
   - name: workload-identity-credential-configuration
     configMap:
       name: wif-config
-  - name: token
-    projected:
-      sources:
-      - serviceAccountToken:
-          audience: https://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$WORKLOAD_POOL_NAME/providers/$WORKLOAD_PROVIDER_NAME
-          expirationSeconds: 3600
-          path: token
 ---
 apiVersion: v1
 kind: Pod
@@ -214,9 +205,6 @@ spec:
     - name: workload-identity-credential-configuration
       mountPath: "/etc/workload-identity"
       readOnly: true
-    - name: token
-      mountPath: "/var/run/service-account"
-      readOnly: true
     env:
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: "/etc/workload-identity/client-config.json"
@@ -231,13 +219,6 @@ spec:
   - name: workload-identity-credential-configuration
     configMap:
       name: wif-config
-  - name: token
-    projected:
-      sources:
-      - serviceAccountToken:
-          audience: https://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$WORKLOAD_POOL_NAME/providers/$WORKLOAD_PROVIDER_NAME
-          expirationSeconds: 3600
-          path: token
 EOF
 
 #Apply the Manifest.
@@ -269,7 +250,7 @@ kubectl exec -it vision-pod-1 --namespace=$NAMESPACE -- /bin/bash
 ```json
 {
   "aud": [
-    "https://iam.googleapis.com/projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<WORKLOAD_POOL_NAME>/providers/<WORKLOAD_PROVIDER_NAME>"
+    "sts.amazonaws.com"
   ],
   "exp": 1753737233,
   "iat": 1753733633,

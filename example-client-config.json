@@ -5,7 +5,7 @@
   "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
   "token_url": "https://sts.googleapis.com/v1/token",
   "credential_source": {
-    "file": "/var/run/service-account/token",
+    "file": "/var/run/secrets/eks.amazonaws.com/serviceaccount/token",
     "format": {
       "type": "text"
     }
